@@ -182,7 +182,14 @@ class Project(models.Model):
         return request.user == self.owner
 ```
 
-### define permission logic on custom target
+### Define permission logic on custom target
+We may want to use other layer (in a MVC context) to put our permission logic instead of using the Model.
+> Motivation for this change
+> https://phalt.github.io/post/django-api-domains/
+> https://github.com/rodrigondec/drf-api-domain
+
+For example, some `ProjectService` (instead of `Project` Model).
+
 ```python
 class ProjectService:
     ...  
@@ -199,8 +206,11 @@ class ProjectService:
     def has_object_update_permission(self, request, obj):
         return request.user == True 
 ```
+
+By overwriting the helper function `_get_permission_target` we can achieve this behaviour.
+
 ```python
-class CustomDRYPermission(DRYPermissions):
+class ProjectServiceDRYPermission(DRYPermissions):
       
     def _get_permission_target(self, view, obj=None):
 
@@ -208,6 +218,7 @@ class CustomDRYPermission(DRYPermissions):
 
         return service
 ```
+
 ### Custom action permissions
 If a custom action, ``publish``, were created using ``@detail_route`` then permissions could be defined like so:
 ```python
