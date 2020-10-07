@@ -32,6 +32,7 @@ class DRYPermissionFiltersBase(filters.BaseFilterBackend):
     e.g. filter_owned_queryset for a custom 'owned' list type requested
     created on a view with the @list_route decorator.
     """
+
     action_routing = False
 
     def filter_queryset(self, request, queryset, view):
@@ -55,7 +56,10 @@ class DRYPermissionFiltersBase(filters.BaseFilterBackend):
         Override this function to add filters.
         This should return a queryset so start with queryset.filter({your filters})
         """
-        assert False, "Method filter_list_queryset must be overridden on '%s'" % view.__class__.__name__
+        assert False, (
+            "Method filter_list_queryset must be overridden on '%s'"
+            % view.__class__.__name__
+        )
 
 
 class DRYPermissions(permissions.BasePermission):
@@ -92,9 +96,28 @@ class DRYPermissions(permissions.BasePermission):
         partial_update can be set, otherwise they will just use update permissions.
 
     """
+
     global_permissions = True
     object_permissions = True
     partial_update_is_update = True
+
+    def _get_permission_target(self, view, obj=None):
+
+        """
+        Função auxiliar para retornar o objeto que possui os metodos de permissão
+        sobrescreva isso para alterar o comportamento
+        """
+
+        if obj:
+            return obj
+
+        serializer_class = view.get_serializer_class()
+        assert serializer_class.Meta.model is not None, (
+            "global_permissions set to true without a model "
+            "set on the serializer for '%s'" % view.__class__.__name__
+        )
+        model_class = serializer_class.Meta.model
+        return model_class
 
     def has_permission(self, request, view):
         """
@@ -103,31 +126,23 @@ class DRYPermissions(permissions.BasePermission):
         if not self.global_permissions:
             return True
 
-        serializer_class = view.get_serializer_class()
-
-        assert serializer_class.Meta.model is not None, (
-            "global_permissions set to true without a model "
-            "set on the serializer for '%s'" % view.__class__.__name__
-        )
-
-        model_class = serializer_class.Meta.model
+        target = self._get_permission_target(view)
 
         action_method_name = None
         if hasattr(view, 'action'):
             action = self._get_action(view.action)
             action_method_name = "has_{action}_permission".format(action=action)
-            # If the specific action permission exists then use it, otherwise use general.
-            if hasattr(model_class, action_method_name):
-                return getattr(model_class, action_method_name)(request)
+            if hasattr(target, action_method_name):
+                return getattr(target, action_method_name)(request=request)
 
         if request.method in permissions.SAFE_METHODS:
-            assert hasattr(model_class, 'has_read_permission'), \
-                self._get_error_message(model_class, 'has_read_permission', action_method_name)
-            return model_class.has_read_permission(request)
+            assert hasattr(target, 'has_read_permission'), \
+                self._get_error_message(target, 'has_read_permission', action_method_name)
+            return target.has_read_permission(request=request)
         else:
-            assert hasattr(model_class, 'has_write_permission'), \
-                self._get_error_message(model_class, 'has_write_permission', action_method_name)
-            return model_class.has_write_permission(request)
+            assert hasattr(target, 'has_write_permission'), \
+                self._get_error_message(target, 'has_write_permission', action_method_name)
+            return target.has_write_permission(request=request)
 
     def has_object_permission(self, request, view, obj):
         """
@@ -136,32 +151,31 @@ class DRYPermissions(permissions.BasePermission):
         if not self.object_permissions:
             return True
 
-        serializer_class = view.get_serializer_class()
-        model_class = serializer_class.Meta.model
+        target = self._get_permission_target(view, obj)
+
         action_method_name = None
         if hasattr(view, 'action'):
             action = self._get_action(view.action)
             action_method_name = "has_object_{action}_permission".format(action=action)
-            # If the specific action permission exists then use it, otherwise use general.
-            if hasattr(obj, action_method_name):
-                return getattr(obj, action_method_name)(request)
+            if hasattr(target, action_method_name):
+                return getattr(target, action_method_name)(request=request, obj=obj)
 
         if request.method in permissions.SAFE_METHODS:
-            assert hasattr(obj, 'has_object_read_permission'), \
-                self._get_error_message(model_class, 'has_object_read_permission', action_method_name)
-            return obj.has_object_read_permission(request)
+            assert hasattr(target, 'has_object_read_permission'), \
+                self._get_error_message(target, 'has_object_read_permission', action_method_name)
+            return target.has_object_read_permission(request=request, obj=obj)
         else:
-            assert hasattr(obj, 'has_object_write_permission'), \
-                self._get_error_message(model_class, 'has_object_write_permission', action_method_name)
-            return obj.has_object_write_permission(request)
+            assert hasattr(target, 'has_object_write_permission'), \
+                self._get_error_message(target, 'has_object_write_permission', action_method_name)
+            return target.has_object_write_permission(request=request, obj=obj)
 
     def _get_action(self, action):
         """
         Utility function that consolidates actions if necessary.
         """
         return_action = action
-        if self.partial_update_is_update and action == 'partial_update':
-            return_action = 'update'
+        if self.partial_update_is_update and action == "partial_update":
+            return_action = "update"
         return return_action
 
     def _get_error_message(self, model_class, method_name, action_method_name):
@@ -169,7 +183,9 @@ class DRYPermissions(permissions.BasePermission):
         Get assertion error message depending if there are actions permissions methods defined.
         """
         if action_method_name:
-            return "'{}' does not have '{}' or '{}' defined.".format(model_class, method_name, action_method_name)
+            return "'{}' does not have '{}' or '{}' defined.".format(
+                model_class, method_name, action_method_name
+            )
         else:
             return "'{}' does not have '{}' defined.".format(model_class, method_name)
 
@@ -178,6 +194,7 @@ class DRYGlobalPermissions(DRYPermissions):
     """
     This is a shortcut class that can be used to only check global permissions on a model.
     """
+
     object_permissions = False
 
 
@@ -185,6 +202,7 @@ class DRYObjectPermissions(DRYPermissions):
     """
     This is a shortcut class that can be used to only check object permissions on a model.
     """
+
     global_permissions = False
 
 
@@ -208,9 +226,17 @@ class DRYPermissionsField(fields.Field):
         then it will return the default CRUD actions along with list and read and write.
     additional_actions: Add a list of strings here to add on to the default actions, without having to repeat them.
     """
-    default_actions = ['create', 'retrieve', 'update', 'destroy', 'write', 'read']
 
-    def __init__(self, actions=None, additional_actions=None, global_only=False, object_only=False, **kwargs):
+    default_actions = ["create", "retrieve", "update", "destroy", "write", "read"]
+
+    def __init__(
+        self,
+        actions=None,
+        additional_actions=None,
+        global_only=False,
+        object_only=False,
+        **kwargs
+    ):
         """See class description for parameters and usage"""
         assert not (global_only and object_only), (
             "Both global_only and object_only cannot be set to true "
@@ -224,30 +250,35 @@ class DRYPermissionsField(fields.Field):
         if additional_actions is not None:
             self.actions = self.actions + additional_actions
 
-        kwargs['source'] = '*'
-        kwargs['read_only'] = True
+        kwargs["source"] = "*"
+        kwargs["read_only"] = True
         super(DRYPermissionsField, self).__init__(**kwargs)
 
     def bind(self, field_name, parent):
         """
         Check the model attached to the serializer to see what methods are defined and save them.
         """
-        assert parent.Meta.model is not None, \
-            "DRYPermissions is used on '{}' without a model".format(parent.__class__.__name__)
+        assert (
+            parent.Meta.model is not None
+        ), "DRYPermissions is used on '{}' without a model".format(
+            parent.__class__.__name__
+        )
 
         for action in self.actions:
 
             if not self.object_only:
                 global_method_name = "has_{action}_permission".format(action=action)
                 if hasattr(parent.Meta.model, global_method_name):
-                    self.action_method_map[action] = {'global': global_method_name}
+                    self.action_method_map[action] = {"global": global_method_name}
 
             if not self.global_only:
-                object_method_name = "has_object_{action}_permission".format(action=action)
+                object_method_name = "has_object_{action}_permission".format(
+                    action=action
+                )
                 if hasattr(parent.Meta.model, object_method_name):
                     if self.action_method_map.get(action, None) is None:
                         self.action_method_map[action] = {}
-                    self.action_method_map[action]['object'] = object_method_name
+                    self.action_method_map[action]["object"] = object_method_name
 
         super(DRYPermissionsField, self).bind(field_name, parent)
 
@@ -259,12 +290,16 @@ class DRYPermissionsField(fields.Field):
         results = {}
         for action, method_names in self.action_method_map.items():
             # If using global permissions and the global method exists for this action.
-            if not self.object_only and method_names.get('global', None) is not None:
-                results[action] = getattr(self.parent.Meta.model, method_names['global'])(self.context['request'])
+            if not self.object_only and method_names.get("global", None) is not None:
+                results[action] = getattr(
+                    self.parent.Meta.model, method_names["global"]
+                )(self.context["request"])
             # If using object permissions, the global permission did not already evaluate to False and the object
             # method exists for this action.
-            if not self.global_only and results.get(action, True) and method_names.get('object', None) is not None:
-                results[action] = getattr(value, method_names['object'])(self.context['request'])
+            if (not self.global_only and results.get(action, True) and method_names.get("object", None) is not None):
+                results[action] = getattr(value, method_names["object"])(
+                    self.context["request"]
+                )
         return results
 
 
@@ -291,14 +326,8 @@ class DRYGlobalPermissionsField(fields.Field):
     additional_actions: Add a list of strings here to add on to the default
         actions, without having to repeat them.
     """
-    default_actions = [
-        'create',
-        'retrieve',
-        'update',
-        'destroy',
-        'write',
-        'read'
-    ]
+
+    default_actions = ["create", "retrieve", "update", "destroy", "write", "read"]
     models = []
 
     def __init__(self, actions=None, additional_actions=None, **kwargs):
@@ -309,8 +338,8 @@ class DRYGlobalPermissionsField(fields.Field):
         if additional_actions is not None:
             self.actions = self.actions + additional_actions
 
-        kwargs['source'] = '*'
-        kwargs['read_only'] = True
+        kwargs["source"] = "*"
+        kwargs["read_only"] = True
         super(DRYGlobalPermissionsField, self).__init__(**kwargs)
 
     def bind(self, field_name, parent):
@@ -321,15 +350,10 @@ class DRYGlobalPermissionsField(fields.Field):
 
         for content_type in ContentType.objects.all():
             for action in self.actions:
-                global_method_name = "has_{action}_permission".format(
-                    action=action
-                )
+                global_method_name = "has_{action}_permission".format(action=action)
                 if hasattr(content_type.model_class(), global_method_name):
-                    self.action_method_map.setdefault(
-                        content_type,
-                        dict()
-                    )[action] = {
-                        'global': global_method_name
+                    self.action_method_map.setdefault(content_type, dict())[action] = {
+                        "global": global_method_name
                     }
         super(DRYGlobalPermissionsField, self).bind(field_name, parent)
 
@@ -343,11 +367,10 @@ class DRYGlobalPermissionsField(fields.Field):
         for content_type, action_method_mapped in self.action_method_map.items():
             results = {}
             for action, method_names in action_method_mapped.items():
-                if method_names.get('global', None) is not None:
+                if method_names.get("global", None) is not None:
                     results[action] = getattr(
-                        content_type.model_class(),
-                        method_names['global']
-                    )(self.context['request'])
+                        content_type.model_class(), method_names["global"]
+                    )(self.context["request"])
 
             final_result[content_type.model] = results
         return final_result
@@ -389,7 +412,7 @@ def authenticated_users(func):
         if is_object_permission:
             request = args[1]
 
-        if not(request.user and request.user.is_authenticated):
+        if not (request.user and request.user.is_authenticated):
             return False
 
         return func(*args, **kwargs)

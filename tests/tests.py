@@ -10,7 +10,7 @@ from dry_rest_permissions.generics import (
     DRYGlobalPermissions,
     DRYPermissionsField,
     DRYPermissionFiltersBase,
-    DRYGlobalPermissionsField
+    DRYGlobalPermissionsField,
 )
 
 
@@ -33,10 +33,10 @@ class BaseGlobalMixin(object):
 class BaseObjectMixin(object):
     base_object_allowed = True
 
-    def has_object_read_permission(self, request):
+    def has_object_read_permission(self, request, obj=None):
         return self.base_object_allowed
 
-    def has_object_write_permission(self, request):
+    def has_object_write_permission(self, request, obj=None):
         return self.base_object_allowed
 
 
@@ -76,43 +76,51 @@ class SpecificObjectMixin(object):
     specific_object_allowed = True
 
     # Ignore this method. It is here to make tests easier to construct, but list requests will never occur for single objects
-    def has_object_list_permission(self, request):
+    def has_object_list_permission(self, request, obj=None):
         return self.specific_object_allowed
 
     # Ignore this method. It is here to make tests easier to construct, but create requests will never occur for single objects
-    def has_object_create_permission(self, request):
+    def has_object_create_permission(self, request, obj=None):
         return self.specific_object_allowed
 
-    def has_object_destroy_permission(self, request):
+    def has_object_destroy_permission(self, request, obj=None):
         return self.specific_object_allowed
 
-    def has_object_retrieve_permission(self, request):
+    def has_object_retrieve_permission(self, request, obj=None):
         return self.specific_object_allowed
 
-    def has_object_update_permission(self, request):
+    def has_object_update_permission(self, request, obj=None):
         return self.specific_object_allowed
 
-    def has_object_custom_action1_permission(self, request):
+    def has_object_custom_action1_permission(self, request, obj=None):
         return self.specific_object_allowed
 
-    def has_object_custom_action2_permission(self, request):
+    def has_object_custom_action2_permission(self, request, obj=None):
         return self.specific_object_allowed
 
 
 class DummySerializer(serializers.ModelSerializer):
-    permissions = DRYPermissionsField(additional_actions=['custom_action1', 'custom_action2'])
+    permissions = DRYPermissionsField(
+        additional_actions=["custom_action1", "custom_action2"]
+    )
 
     class Meta:
         model = DummyModel
-        fields = ('test_field', 'permissions')
+        fields = ("test_field", "permissions")
 
 
-class BaseMixedModel(models.Model, BaseGlobalMixin, SpecificGlobalMixin,
-                     BaseObjectMixin, SpecificObjectMixin):
+class BaseMixedModel(
+    models.Model,
+    BaseGlobalMixin,
+    SpecificGlobalMixin,
+    BaseObjectMixin,
+    SpecificObjectMixin,
+):
     """
     We need to define this model before testing in order to let the
     ContentType of Django take in consideration this model and all the Mixins
     """
+
     test_field = models.TextField()
 
 
@@ -121,7 +129,7 @@ class DummyProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BaseMixedModel
-        fields = ('test_field', 'global_permissions')
+        fields = ("test_field", "global_permissions")
 
 
 class DummyViewSet(viewsets.ModelViewSet):
@@ -147,19 +155,29 @@ class DummyProfileViewSet(viewsets.ModelViewSet):
 
 
 class DRYRestPermissionsTests(TestCase):
-
     def setUp(self):
-        self.action_set = ['retrieve', 'list', 'create', 'destroy', 'update', 'partial_update', 'custom_action1', 'custom_action2']
+        self.action_set = [
+            "retrieve",
+            "list",
+            "create",
+            "destroy",
+            "update",
+            "partial_update",
+            "custom_action1",
+            "custom_action2",
+        ]
 
         self.factory = RequestFactory()
-        self.request_retrieve = Request(self.factory.get('/dummy/1'))
-        self.request_list = Request(self.factory.get('/dummy'))
-        self.request_create = Request(self.factory.post('/dummy'), {})
-        self.request_destroy = Request(self.factory.delete('/dummy/1'))
-        self.request_update = Request(self.factory.put('/dummy/1', {}))
-        self.request_partial_update = Request(self.factory.patch('/dummy/1', {}))
-        self.request_custom_action1 = Request(self.factory.get('/dummy/custom_action1'))
-        self.request_custom_action2 = Request(self.factory.post('/dummy/custom_action2', {}))
+        self.request_retrieve = Request(self.factory.get("/dummy/1"))
+        self.request_list = Request(self.factory.get("/dummy"))
+        self.request_create = Request(self.factory.post("/dummy"), {})
+        self.request_destroy = Request(self.factory.delete("/dummy/1"))
+        self.request_update = Request(self.factory.put("/dummy/1", {}))
+        self.request_partial_update = Request(self.factory.patch("/dummy/1", {}))
+        self.request_custom_action1 = Request(self.factory.get("/dummy/custom_action1"))
+        self.request_custom_action2 = Request(
+            self.factory.post("/dummy/custom_action2", {})
+        )
 
     def _run_permission_checks(self, view, obj, assert_value):
         for action in self.action_set:
@@ -171,41 +189,52 @@ class DRYRestPermissionsTests(TestCase):
     def _run_dry_permission_field_checks(self, view, obj, assert_specific, assert_base):
         serializer = view.get_serializer_class()()
         # dummy request
-        serializer.context['request'] = self.request_retrieve
+        serializer.context["request"] = self.request_retrieve
         representation = serializer.to_representation(obj)
 
-        for action in [action for action in self.action_set if action not in ['partial_update', 'list']]:
-            has_permission = representation['permissions'].get(action, None)
-            self.assertEqual(has_permission, assert_specific, "Action '%s' %s != %s" % (action, has_permission, assert_specific))
+        for action in [
+            action
+            for action in self.action_set
+            if action not in ["partial_update", "list"]
+        ]:
+            has_permission = representation["permissions"].get(action, None)
+            self.assertEqual(
+                has_permission,
+                assert_specific,
+                "Action '%s' %s != %s" % (action, has_permission, assert_specific),
+            )
 
-        for action in ['read', 'write']:
-            has_permission = representation['permissions'].get(action, None)
-            self.assertEqual(has_permission, assert_base, "Action '%s' %s != %s" % (action, has_permission, assert_base))
+        for action in ["read", "write"]:
+            has_permission = representation["permissions"].get(action, None)
+            self.assertEqual(
+                has_permission,
+                assert_base,
+                "Action '%s' %s != %s" % (action, has_permission, assert_base),
+            )
 
-    def _run_dry_generic_permission_field_checks(self, view, obj, additional_actions=[]):
+    def _run_dry_generic_permission_field_checks(
+        self, view, obj, additional_actions=[]
+    ):
         serializer = view.get_serializer_class()()
         # dummy request
-        serializer.context['request'] = self.request_retrieve
+        serializer.context["request"] = self.request_retrieve
         representation = serializer.to_representation(obj)
 
         permissions = {
-            'basemixedmodel': {
-                'create': True,
-                'retrieve': True,
-                'update': True,
-                'destroy': True,
-                'write': True,
-                'read': True
+            "basemixedmodel": {
+                "create": True,
+                "retrieve": True,
+                "update": True,
+                "destroy": True,
+                "write": True,
+                "read": True,
             }
         }
 
         for additional_action in additional_actions:
-            permissions['basemixedmodel'][additional_action] = True
+            permissions["basemixedmodel"][additional_action] = True
 
-        self.assertEqual(
-            representation['global_permissions'],
-            permissions
-        )
+        self.assertEqual(representation["global_permissions"], permissions)
 
     def test_true_base_generic_permissions(self):
         view = DummyProfileViewSet()
@@ -215,12 +244,12 @@ class DRYRestPermissionsTests(TestCase):
     def test_base_generic_additionals_permissions(self):
         class TestSerializer(DummySerializer):
             global_permissions = DRYGlobalPermissionsField(
-                additional_actions=['custom_action1', 'custom_action2']
+                additional_actions=["custom_action1", "custom_action2"]
             )
 
             class Meta:
                 model = BaseMixedModel
-                fields = '__all__'
+                fields = "__all__"
 
         class TestViewSet(DummyViewSet):
             serializer_class = TestSerializer
@@ -230,7 +259,7 @@ class DRYRestPermissionsTests(TestCase):
         self._run_dry_generic_permission_field_checks(
             view,
             BaseMixedModel(),
-            additional_actions=['custom_action1', 'custom_action2']
+            additional_actions=["custom_action1", "custom_action2"],
         )
 
     def test_true_base_permissions(self):
@@ -240,13 +269,12 @@ class DRYRestPermissionsTests(TestCase):
         class TestSerializer(DummySerializer):
             class Meta:
                 model = TestModel
-                fields = '__all__'
+                fields = "__all__"
 
         class TestViewSet(DummyViewSet):
             serializer_class = TestSerializer
 
         view = TestViewSet()
-
         self._run_permission_checks(view, TestModel(), True)
         self._run_dry_permission_field_checks(view, TestModel(), None, True)
 
@@ -257,7 +285,7 @@ class DRYRestPermissionsTests(TestCase):
         class TestSerializer(DummySerializer):
             class Meta:
                 model = TestModel
-                fields = '__all__'
+                fields = "__all__"
 
         class TestViewSet(DummyViewSet):
             serializer_class = TestSerializer
@@ -274,7 +302,7 @@ class DRYRestPermissionsTests(TestCase):
         class TestSerializer(DummySerializer):
             class Meta:
                 model = TestModel
-                fields = '__all__'
+                fields = "__all__"
 
         class TestViewSet(DummyViewSet):
             serializer_class = TestSerializer
@@ -286,15 +314,19 @@ class DRYRestPermissionsTests(TestCase):
 
     def test_true_specific_permissions(self):
         class TestModel(
-                DummyModel, BaseObjectMixin, BaseGlobalMixin,
-                SpecificObjectMixin, SpecificGlobalMixin):
+            DummyModel,
+            BaseObjectMixin,
+            BaseGlobalMixin,
+            SpecificObjectMixin,
+            SpecificGlobalMixin,
+        ):
             base_global_allowed = False
             base_object_allowed = False
 
         class TestSerializer(DummySerializer):
             class Meta:
                 model = TestModel
-                fields = '__all__'
+                fields = "__all__"
 
         class TestViewSet(DummyViewSet):
             serializer_class = TestSerializer
@@ -311,7 +343,7 @@ class DRYRestPermissionsTests(TestCase):
         class TestSerializer(DummySerializer):
             class Meta:
                 model = TestModel
-                fields = '__all__'
+                fields = "__all__"
 
         class TestViewSet(DummyViewSet):
             serializer_class = TestSerializer
@@ -323,14 +355,18 @@ class DRYRestPermissionsTests(TestCase):
 
     def test_false_specific_object_permissions(self):
         class TestModel(
-                DummyModel, BaseObjectMixin, BaseGlobalMixin,
-                SpecificObjectMixin, SpecificGlobalMixin):
+            DummyModel,
+            BaseObjectMixin,
+            BaseGlobalMixin,
+            SpecificObjectMixin,
+            SpecificGlobalMixin,
+        ):
             specific_object_allowed = False
 
         class TestSerializer(DummySerializer):
             class Meta:
                 model = TestModel
-                fields = '__all__'
+                fields = "__all__"
 
         class TestViewSet(DummyViewSet):
             serializer_class = TestSerializer
@@ -342,14 +378,18 @@ class DRYRestPermissionsTests(TestCase):
 
     def test_false_specific_global_permissions(self):
         class TestModel(
-                DummyModel, BaseObjectMixin, BaseGlobalMixin,
-                SpecificObjectMixin, SpecificGlobalMixin):
+            DummyModel,
+            BaseObjectMixin,
+            BaseGlobalMixin,
+            SpecificObjectMixin,
+            SpecificGlobalMixin,
+        ):
             specific_global_allowed = False
 
         class TestSerializer(DummySerializer):
             class Meta:
                 model = TestModel
-                fields = '__all__'
+                fields = "__all__"
 
         class TestViewSet(DummyViewSet):
             serializer_class = TestSerializer
@@ -361,21 +401,28 @@ class DRYRestPermissionsTests(TestCase):
 
     def test_true_no_global_permissions(self):
         class TestModel(
-                DummyModel, BaseObjectMixin, BaseGlobalMixin,
-                SpecificObjectMixin, SpecificGlobalMixin):
+            DummyModel,
+            BaseObjectMixin,
+            BaseGlobalMixin,
+            SpecificObjectMixin,
+            SpecificGlobalMixin,
+        ):
             base_global_allowed = False
             specific_global_allowed = False
 
         class TestSerializer(DummySerializer):
-            permissions = DRYPermissionsField(object_only=True, additional_actions=['custom_action1', 'custom_action2'])
+            permissions = DRYPermissionsField(
+                object_only=True,
+                additional_actions=["custom_action1", "custom_action2"],
+            )
 
             class Meta:
                 model = TestModel
-                fields = '__all__'
+                fields = "__all__"
 
         class TestViewSet(DummyViewSet):
             serializer_class = TestSerializer
-            permission_classes = (DRYObjectPermissions, )
+            permission_classes = (DRYObjectPermissions,)
 
         view = TestViewSet()
 
@@ -384,21 +431,28 @@ class DRYRestPermissionsTests(TestCase):
 
     def test_true_no_object_permissions(self):
         class TestModel(
-                DummyModel, BaseObjectMixin, BaseGlobalMixin,
-                SpecificObjectMixin, SpecificGlobalMixin):
+            DummyModel,
+            BaseObjectMixin,
+            BaseGlobalMixin,
+            SpecificObjectMixin,
+            SpecificGlobalMixin,
+        ):
             base_object_allowed = False
             specific_object_allowed = False
 
         class TestSerializer(DummySerializer):
-            permissions = DRYPermissionsField(global_only=True, additional_actions=['custom_action1', 'custom_action2'])
+            permissions = DRYPermissionsField(
+                global_only=True,
+                additional_actions=["custom_action1", "custom_action2"],
+            )
 
             class Meta:
                 model = TestModel
-                fields = '__all__'
+                fields = "__all__"
 
         class TestViewSet(DummyViewSet):
             serializer_class = TestSerializer
-            permission_classes = (DRYGlobalPermissions, )
+            permission_classes = (DRYGlobalPermissions,)
 
         view = TestViewSet()
 
@@ -413,7 +467,6 @@ class DRYRestPermissionsTests(TestCase):
             pass
 
         class TestSerializer(DummySerializer):
-
             class Meta:
                 model = TestModel
 
@@ -428,7 +481,7 @@ class DRYRestPermissionsTests(TestCase):
 
         view = TestViewSet()
         view.request = self.request_list
-        view.action = 'list'
+        view.action = "list"
         view.kwargs = []
         query_set = view.filter_queryset(view.get_queryset())
         self.assertEqual(query_set.__class__, DummyFilter)
@@ -441,10 +494,9 @@ class DRYRestPermissionsTests(TestCase):
             pass
 
         class TestSerializer(DummySerializer):
-
             class Meta:
                 model = TestModel
-                fields = '__all__'
+                fields = "__all__"
 
         class TestFilterBackend(DRYPermissionFiltersBase):
             action_routing = True
@@ -462,7 +514,7 @@ class DRYRestPermissionsTests(TestCase):
 
         view = TestViewSet()
         view.request = self.request_custom_action1
-        view.action = 'custom_action1'
+        view.action = "custom_action1"
         view.kwargs = []
         query_set = view.filter_queryset(view.get_queryset())
         self.assertEqual(query_set.__class__, DummyFilter)
