@@ -135,7 +135,7 @@ class Project(models.Model):
     def has_read_permission(request):
         return True
       
-    def has_object_read_permission(self, request):
+    def has_object_read_permission(self, request, obj):
         return True
       
     @staticmethod
@@ -159,7 +159,7 @@ class Project(models.Model):
         """
         return True
       
-    def has_object_write_permission(self, request):
+    def has_object_write_permission(self, request, obj):
         return request.user == self.owner
 ```
   If we just wanted to grant update permission, but not destroy we could do this:
@@ -175,11 +175,38 @@ class Project(models.Model):
         """
         return True
       
-    def has_object_write_permission(self, request):
+    def has_object_write_permission(self, request, obj):
         return False
       
-    def has_object_update_permission(self, request):
+    def has_object_update_permission(self, request, obj):
         return request.user == self.owner
+```
+
+### define permission logic on custom target
+```python
+class ProjectService:
+    ...  
+    @staticmethod
+    def has_write_permission(request):
+        """
+        We can remove the has_create_permission because this implicitly grants that permission.
+        """
+        return True
+      
+    def has_object_write_permission(self, request, obj):
+        return False
+      
+    def has_object_update_permission(self, request, obj):
+        return request.user == True 
+```
+```python
+class CustomDRYPermission(DRYPermissions):
+      
+    def _get_permission_target(self, view, obj=None):
+
+        service = ProjectService()
+
+        return service
 ```
 ### Custom action permissions
 If a custom action, ``publish``, were created using ``@detail_route`` then permissions could be defined like so:
@@ -192,7 +219,7 @@ class Project(models.Model):
     def has_publish_permission(request):
         return True
       
-    def has_object_publish_permission(self, request):
+    def has_object_publish_permission(self, request, obj):
         return request.user == self.owner
 ``` 
 ### Helpful decorators
@@ -216,7 +243,7 @@ class Project(models.Model):
         return True
       
     @allow_staff_or_superuser
-    def has_object_publish_permission(self, request):
+    def has_object_publish_permission(self, request, obj):
         return request.user == self.owner
 ```
 ## Returning Permissions to the Client App
