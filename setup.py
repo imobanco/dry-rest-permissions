@@ -6,18 +6,18 @@ import sys
 from setuptools import setup
 
 
-name = "django-dry-rest-permissions"
-package = "dry_rest_permissions"
-description = "Rules based permissions for the Django Rest Framework"
-url = "https://github.com/FJNR-inc/dry-rest-permissions"
-author = "FJNR-inc"
-author_email = "noel.rignon@fjnr.ca"
-license = "BSD"
+name = 'django-dry-rest-permissions'
+package = 'dry_rest_permissions'
+description = 'Rules based permissions for the Django Rest Framework'
+url = 'https://github.com/FJNR-inc/dry-rest-permissions'
+author = 'FJNR-inc'
+author_email = 'noel.rignon@fjnr.ca'
+license = 'BSD'
 
-with open("README.md") as readme_file:
+with open('README.md') as readme_file:
     readme = readme_file.read()
 
-with open("HISTORY.md") as history_file:
+wwith open('HISTORY.md') as history_file:
     history = history_file.read()
 
 
@@ -25,21 +25,18 @@ def get_version(package):
     """
     Return package version as listed in `__version__` in `init.py`.
     """
-    init_py = open(os.path.join(package, "__init__.py")).read()
-    return re.search("^__version__ = ['\"]([^'\"]+)['\"]", init_py, re.MULTILINE).group(
-        1
-    )
+    init_py = open(os.path.join(package, '__init__.py')).read()
+    return re.search("^__version__ = ['\"]([^'\"]+)['\"]",
+                     init_py, re.MULTILINE).group(1)
 
 
 def get_packages(package):
     """
     Return root package and all sub-packages.
     """
-    return [
-        dirpath
-        for dirpath, dirnames, filenames in os.walk(package)
-        if os.path.exists(os.path.join(dirpath, "__init__.py"))
-    ]
+    return [dirpath
+            for dirpath, dirnames, filenames in os.walk(package)
+            if os.path.exists(os.path.join(dirpath, '__init__.py'))]
 
 
 def get_package_data(package):
@@ -47,22 +44,21 @@ def get_package_data(package):
     Return all files under the root package, that are not in a
     package themselves.
     """
-    walk = [
-        (dirpath.replace(package + os.sep, "", 1), filenames)
-        for dirpath, dirnames, filenames in os.walk(package)
-        if not os.path.exists(os.path.join(dirpath, "__init__.py"))
-    ]
+    walk = [(dirpath.replace(package + os.sep, '', 1), filenames)
+            for dirpath, dirnames, filenames in os.walk(package)
+            if not os.path.exists(os.path.join(dirpath, '__init__.py'))]
 
     filepaths = []
     for base, filenames in walk:
-        filepaths.extend([os.path.join(base, filename) for filename in filenames])
+        filepaths.extend([os.path.join(base, filename)
+                          for filename in filenames])
     return {package: filepaths}
 
 
 version = get_version(package)
 
 
-if sys.argv[-1] == "publish":
+if sys.argv[-1] == 'publish':
     if os.system("pip freeze | grep wheel"):
         print("wheel not installed.\nUse `pip install wheel`.\nExiting.")
         sys.exit()
@@ -80,26 +76,26 @@ setup(
     url=url,
     license=license,
     description=description,
-    long_description=readme + "\n\n" + history,
-    long_description_content_type="text/markdown",
+    long_description=readme + '\n\n' + history,
+    long_description_content_type='text/markdown',
     author=author,
     author_email=author_email,
     packages=get_packages(package),
     package_data=get_package_data(package),
     install_requires=[],
     classifiers=[
-        "Development Status :: 5 - Production/Stable",
-        "Environment :: Web Environment",
-        "Framework :: Django",
-        "Intended Audience :: Developers",
-        "License :: OSI Approved :: BSD License",
-        "Operating System :: OS Independent",
-        "Natural Language :: English",
-        "Programming Language :: Python :: 3.4",
-        "Programming Language :: Python :: 3.5",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "Topic :: Internet :: WWW/HTTP",
-    ],
+        'Development Status :: 5 - Production/Stable',
+        'Environment :: Web Environment',
+        'Framework :: Django',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: BSD License',
+        'Operating System :: OS Independent',
+        'Natural Language :: English',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Topic :: Internet :: WWW/HTTP',
+    ]
 )
