@@ -102,12 +102,8 @@ class DRYPermissions(permissions.BasePermission):
     partial_update_is_update = True
 
     def _get_permission_target(self, view, obj=None):
-
-        """
-        Função auxiliar para retornar o objeto que possui os metodos de permissão
-        sobrescreva isso para alterar o comportamento
-        """
-
+        """ Função auxiliar para retornar o objeto que possui os metodos de permissão
+        sobrescreva isso para alterar o comportamento"""
         if obj:
             return obj
 
