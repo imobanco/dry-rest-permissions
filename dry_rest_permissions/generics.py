@@ -102,11 +102,14 @@ class DRYPermissions(permissions.BasePermission):
         """
         if obj:
             return obj
+            
         serializer_class = view.get_serializer_class()
+
         assert serializer_class.Meta.model is not None, (
             "global_permissions set to true without a model "
             "set on the serializer for '%s'" % view.__class__.__name__
         )
+
         model_class = serializer_class.Meta.model
         return model_class
 
@@ -210,8 +213,7 @@ class DRYPermissionsField(fields.Field):
         then it will return the default CRUD actions along with list and read and write.
     additional_actions: Add a list of strings here to add on to the default actions, without having to repeat them.
     """
-
-    default_actions = ["create", "retrieve", "update", "destroy", "write", "read"]
+    default_actions = ['create', 'retrieve', 'update', 'destroy', 'write', 'read']
 
     def __init__(self, actions=None, additional_actions=None, global_only=False, object_only=False, **kwargs):
         """See class description for parameters and usage"""
@@ -268,7 +270,6 @@ class DRYPermissionsField(fields.Field):
             # method exists for this action.
             if not self.global_only and results.get(action, True) and method_names.get('object', None) is not None:
                 results[action] = getattr(value, method_names['object'])(self.context['request'])
-                )
         return results
 
 
@@ -295,7 +296,6 @@ class DRYGlobalPermissionsField(fields.Field):
     additional_actions: Add a list of strings here to add on to the default
         actions, without having to repeat them.
     """
-
     default_actions = [
         'create',
         'retrieve',

@@ -147,6 +147,7 @@ class DummyProfileViewSet(viewsets.ModelViewSet):
 
 
 class DRYRestPermissionsTests(TestCase):
+
     def setUp(self):
         self.action_set = ['retrieve', 'list', 'create', 'destroy', 'update', 'partial_update', 'custom_action1', 'custom_action2']
 
@@ -242,10 +243,10 @@ class DRYRestPermissionsTests(TestCase):
                 fields = '__all__'
 
         class TestViewSet(DummyViewSet):
-
             serializer_class = TestSerializer
-
+        
         view = TestViewSet()
+
         self._run_permission_checks(view, TestModel(), True)
         self._run_dry_permission_field_checks(view, TestModel(), None, True)
 
@@ -273,7 +274,7 @@ class DRYRestPermissionsTests(TestCase):
         class TestSerializer(DummySerializer):
             class Meta:
                 model = TestModel
-                fields = "__all__"
+                fields = '__all__'
 
         class TestViewSet(DummyViewSet):
             serializer_class = TestSerializer
@@ -382,7 +383,7 @@ class DRYRestPermissionsTests(TestCase):
         self._run_dry_permission_field_checks(view, TestModel(), True, True)
 
     def test_true_no_object_permissions(self):
-         class TestModel(
+        class TestModel(
                 DummyModel, BaseObjectMixin, BaseGlobalMixin,
                 SpecificObjectMixin, SpecificGlobalMixin):
             base_object_allowed = False
