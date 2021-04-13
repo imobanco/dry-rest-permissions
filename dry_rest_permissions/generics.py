@@ -55,7 +55,8 @@ class DRYPermissionFiltersBase(filters.BaseFilterBackend):
         Override this function to add filters.
         This should return a queryset so start with queryset.filter({your filters})
         """
-        assert False, "Method filter_list_queryset must be overridden on '%s'"% view.__class__.__name__
+        assert False, "Method filter_list_queryset must be overridden on '%s'" % view.__class__.__name__
+
 
 class DRYPermissions(permissions.BasePermission):
     """
@@ -97,12 +98,12 @@ class DRYPermissions(permissions.BasePermission):
 
     def _get_permission_target(self, view, obj=None):
         """
-        Helper function to return the target object which has the permission methods. 
+        Helper function to return the target object which has the permission methods.
         Overwriting this function allows some flexibility to customize the behaviour.
         """
         if obj:
             return obj
-            
+
         serializer_class = view.get_serializer_class()
 
         assert serializer_class.Meta.model is not None, (

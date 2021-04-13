@@ -244,7 +244,7 @@ class DRYRestPermissionsTests(TestCase):
 
         class TestViewSet(DummyViewSet):
             serializer_class = TestSerializer
-        
+
         view = TestViewSet()
 
         self._run_permission_checks(view, TestModel(), True)
